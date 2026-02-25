@@ -1,15 +1,51 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import axios from 'axios';
 
 const showingNavigationDropdown = ref(false);
 const page = usePage();
 const isAdmin = page.props.auth.user.is_admin;
+
+const quotes = ref([]);
+const currentIndex = ref(0);
+const currentQuote = ref(null);
+let interval = null;
+
+const fetchQuotes = async () => {
+    try {
+        const token = page.props.token;
+        if (!token) return;
+        const response = await axios.get('/api/quotes', {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        quotes.value = response.data;
+        if (quotes.value.length > 0) {
+            currentQuote.value = quotes.value[0];
+        }
+    } catch {
+    }
+};
+
+const rotateQuote = () => {
+    if (quotes.value.length === 0) return;
+    currentIndex.value = (currentIndex.value + 1) % quotes.value.length;
+    currentQuote.value = quotes.value[currentIndex.value];
+};
+
+onMounted(() => {
+    fetchQuotes();
+    interval = setInterval(rotateQuote, 60000);
+});
+
+onUnmounted(() => {
+    if (interval) clearInterval(interval);
+});
 </script>
 
 <template>
@@ -34,6 +70,9 @@ const isAdmin = page.props.auth.user.is_admin;
                                 </NavLink>
                                 <NavLink v-if="isAdmin" :href="route('employees.index')" :active="route().current('employees.*')">
                                     Employees
+                                </NavLink>
+                                <NavLink :href="route('quotes.index')" :active="route().current('quotes.*')">
+                                    Daily Quotes
                                 </NavLink>
                             </div>
                         </div>
@@ -76,6 +115,7 @@ const isAdmin = page.props.auth.user.is_admin;
                         <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">Dashboard</ResponsiveNavLink>
                         <ResponsiveNavLink v-if="isAdmin" :href="route('companies.index')" :active="route().current('companies.*')">Companies</ResponsiveNavLink>
                         <ResponsiveNavLink v-if="isAdmin" :href="route('employees.index')" :active="route().current('employees.*')">Employees</ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('quotes.index')" :active="route().current('quotes.*')">Daily Quotes</ResponsiveNavLink>
                     </div>
 
                     <div class="border-t border-gray-200 pb-1 pt-4">
@@ -93,8 +133,16 @@ const isAdmin = page.props.auth.user.is_admin;
             </nav>
 
             <header class="bg-white shadow" v-if="$slots.header">
-                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 flex items-center justify-between">
                     <slot name="header" />
+                    <div v-if="currentQuote" class="hidden sm:block max-w-lg text-right">
+                        <p class="text-sm italic text-gray-500 leading-snug">
+                            "{{ currentQuote.q }}"
+                        </p>
+                        <p class="mt-0.5 text-xs font-medium text-gray-400">
+                            — {{ currentQuote.a }}
+                        </p>
+                    </div>
                 </div>
             </header>
 

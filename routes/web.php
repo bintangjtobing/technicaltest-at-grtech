@@ -3,6 +3,7 @@
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QuoteController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -24,6 +25,10 @@ Route::middleware('auth')->group(function () {
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('companies', CompanyController::class);
     Route::resource('employees', EmployeeController::class);
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/quotes', [QuoteController::class, 'page'])->name('quotes.index');
 });
 
 require __DIR__.'/auth.php';

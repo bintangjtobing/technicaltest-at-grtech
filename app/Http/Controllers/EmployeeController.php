@@ -18,13 +18,23 @@ class EmployeeController extends Controller
     {
         $query = Employee::with('company');
 
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
+        if ($request->filled('filter_first_name')) {
+            $query->where('first_name', 'like', '%' . $request->filter_first_name . '%');
+        }
+        if ($request->filled('filter_last_name')) {
+            $query->where('last_name', 'like', '%' . $request->filter_last_name . '%');
+        }
+        if ($request->filled('filter_email')) {
+            $query->where('email', 'like', '%' . $request->filter_email . '%');
+        }
+        if ($request->filled('filter_company')) {
+            $query->where('company_id', $request->filter_company);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
         }
 
         $sortField = $request->get('sortField', 'company_id');
@@ -50,7 +60,10 @@ class EmployeeController extends Controller
         return Inertia::render('Employees/Index', [
             'employees' => $employeesResource,
             'companies' => CompanyResource::collection(Company::all()),
-            'filters' => array_merge($request->only(['search', 'sortField', 'sortOrder']), ['view' => $view]),
+            'filters' => $request->only([
+                'sortField', 'sortOrder', 'filter_first_name', 'filter_last_name',
+                'filter_email', 'filter_company', 'date_from', 'date_to', 'view',
+            ]),
         ]);
     }
 

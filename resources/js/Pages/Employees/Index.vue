@@ -11,7 +11,6 @@ const props = defineProps({
 });
 
 const page = usePage();
-const searchText = ref(props.filters?.search || '');
 const viewMode = ref(props.filters?.view || 'flat');
 const showModal = ref(false);
 const editModal = ref(false);
@@ -26,6 +25,14 @@ const form = ref({
     email: '',
     phone: '',
 });
+
+// Filter states
+const filterFirstName = ref(props.filters?.filter_first_name || '');
+const filterLastName = ref(props.filters?.filter_last_name || '');
+const filterEmail = ref(props.filters?.filter_email || '');
+const filterCompany = ref(props.filters?.filter_company ? Number(props.filters.filter_company) : undefined);
+const dateFrom = ref(props.filters?.date_from || '');
+const dateTo = ref(props.filters?.date_to || '');
 
 const columns = [
     { title: '#', key: 'index', width: 60 },
@@ -78,29 +85,51 @@ const pagination = computed(() => ({
     pageSizeOptions: ['10', '25', '50'],
 }));
 
+const getFilterParams = () => {
+    const params = { view: viewMode.value };
+    if (filterFirstName.value) params.filter_first_name = filterFirstName.value;
+    if (filterLastName.value) params.filter_last_name = filterLastName.value;
+    if (filterEmail.value) params.filter_email = filterEmail.value;
+    if (filterCompany.value) params.filter_company = filterCompany.value;
+    if (dateFrom.value) params.date_from = dateFrom.value;
+    if (dateTo.value) params.date_to = dateTo.value;
+    return params;
+};
+
 const handleTableChange = (pag, filters, sorter) => {
     router.get(route('employees.index'), {
         page: pag.current,
         pageSize: pag.pageSize,
-        search: searchText.value,
         sortField: sorter.field || 'id',
         sortOrder: sorter.order || 'ascend',
-        view: viewMode.value,
+        ...getFilterParams(),
     }, { preserveState: true });
 };
 
-const handleSearch = () => {
-    router.get(route('employees.index'), {
-        search: searchText.value,
-        view: viewMode.value,
-    }, { preserveState: true });
+const handleFilter = () => {
+    router.get(route('employees.index'), getFilterParams(), { preserveState: true });
+};
+
+const handleReset = () => {
+    filterFirstName.value = '';
+    filterLastName.value = '';
+    filterEmail.value = '';
+    filterCompany.value = undefined;
+    dateFrom.value = '';
+    dateTo.value = '';
+    router.get(route('employees.index'), { view: viewMode.value }, { preserveState: true });
 };
 
 const handleViewChange = () => {
-    router.get(route('employees.index'), {
-        search: searchText.value,
-        view: viewMode.value,
-    }, { preserveState: true });
+    router.get(route('employees.index'), getFilterParams(), { preserveState: true });
+};
+
+const onDateFromChange = (date, dateString) => {
+    dateFrom.value = dateString || '';
+};
+
+const onDateToChange = (date, dateString) => {
+    dateTo.value = dateString || '';
 };
 
 const openCreateModal = (companyId = null) => {
@@ -193,14 +222,52 @@ watch(() => page.props.flash, (flash) => {
             <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
                 <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                     <div class="p-6">
-                        <div class="mb-4 flex justify-between items-center">
-                            <div class="flex items-center gap-4">
-                                <a-input-search v-model:value="searchText" placeholder="Search employees..." style="width: 300px" @search="handleSearch" />
+                        <!-- Filters -->
+                        <div class="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-4" @keyup.enter="handleFilter">
+                            <div class="mb-3 flex items-center justify-between">
+                                <span class="text-sm font-medium text-gray-700">Filters</span>
                                 <a-radio-group v-model:value="viewMode" button-style="solid" size="small" @change="handleViewChange">
                                     <a-radio-button value="flat">Flat</a-radio-button>
                                     <a-radio-button value="grouped">Grouped</a-radio-button>
                                 </a-radio-group>
                             </div>
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                <div>
+                                    <label class="mb-1 block text-xs text-gray-500">First Name</label>
+                                    <a-input v-model:value="filterFirstName" placeholder="First name..." allow-clear />
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs text-gray-500">Last Name</label>
+                                    <a-input v-model:value="filterLastName" placeholder="Last name..." allow-clear />
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs text-gray-500">Email</label>
+                                    <a-input v-model:value="filterEmail" placeholder="Email..." allow-clear />
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs text-gray-500">Company</label>
+                                    <a-select v-model:value="filterCompany" placeholder="All companies" style="width: 100%" allow-clear>
+                                        <a-select-option v-for="company in companies.data" :key="company.id" :value="company.id">
+                                            {{ company.name }}
+                                        </a-select-option>
+                                    </a-select>
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs text-gray-500">Date From</label>
+                                    <a-date-picker style="width: 100%" :value="dateFrom || undefined" value-format="YYYY-MM-DD" @change="onDateFromChange" placeholder="From date" />
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs text-gray-500">Date To</label>
+                                    <a-date-picker style="width: 100%" :value="dateTo || undefined" value-format="YYYY-MM-DD" @change="onDateToChange" placeholder="To date" />
+                                </div>
+                            </div>
+                            <div class="mt-3 flex gap-2">
+                                <a-button type="primary" @click="handleFilter">Filter</a-button>
+                                <a-button @click="handleReset">Reset</a-button>
+                            </div>
+                        </div>
+
+                        <div class="mb-4 flex justify-end">
                             <a-button type="primary" @click="openCreateModal()">Add Employee</a-button>
                         </div>
 
